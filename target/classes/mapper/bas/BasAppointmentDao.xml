@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.selfstudy.modules.bas.dao.BasAppointmentDao">
+
+	<!-- 可根据自己的需求，是否要使用 -->
+    <resultMap type="com.selfstudy.modules.bas.entity.BasAppointmentEntity" id="basAppointmentMap">
+        <result property="id" column="id"/>
+        <result property="seatId" column="seat_id"/>
+        <result property="userId" column="user_id"/>
+        <result property="seatPhone" column="seat_phone"/>
+        <result property="seatName" column="seat_name"/>
+        <result property="seatClass" column="seat_class"/>
+        <result property="seatTime" column="seat_time"/>
+        <result property="seatState" column="seat_state"/>
+        <result property="createUserId" column="create_user_id"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="deleteFlag" column="delete_flag"/>
+        <result property="deleteUserId" column="delete_user_id"/>
+        <result property="deleteTime" column="delete_time"/>
+    </resultMap>
+    <select id="myAppointment" resultType="com.selfstudy.modules.applet.vo.BasAppointmentVO">
+        select
+               ba.id,
+               ba.seat_id,
+               ba.user_id,
+               ba.seat_phone,
+               ba.seat_name,
+               ba.seat_class,
+               ba.seat_day,
+               ba.seat_state,
+               bs.seat_name as sName,
+               bsr.room_name,
+               bf.floor
+        from bas_appointment ba
+            left join bas_seat bs on ba.seat_id = bs.seat_id
+            left join bas_study_room bsr on bs.room_id = bsr.room_id
+            left join bas_floor bf on bsr.floor_id = bf.id
+        where  ba.user_id = #{userId} and ba.delete_flag=0
+        order by ba.create_time desc
+    </select>
+
+
+    <select id="countAll" resultType="com.selfstudy.modules.bas.vo.CountVO">
+        SELECT
+               count(ba.id) count,
+               bsr.room_name,
+               bf.floor
+        from bas_study_room bsr
+                 LEFT JOIN bas_floor bf on bsr.floor_id = bf.id
+                 left JOIN bas_seat bs on bs.room_id = bsr.room_id
+                 LEFT JOIN bas_appointment ba on ba.seat_id = bs.seat_id
+            WHERE
+                  bsr.delete_flag = 0
+              and bs.delete_flag = 0
+              and ba.delete_flag = 0
+              and date_format(ba.seat_time ,'%Y-%m-%d') = date_format(#{date} ,'%Y-%m-%d')
+        GROUP BY bsr.room_id
+    </select>
+
+    <!--
+    <select id="queryByHelper" resultType="com.selfstudy.modules.bas.entity.BasAppointmentEntity">
+        select *
+        from bas_appointment
+        where delete_flag = 0
+        <if test="queryDTO.seatPhone != null and queryDTO.seatPhone != ''">
+            and seat_phone = #{queryDTO.seatPhone}
+        </if>
+        <if test="queryDTO.seatName != null and queryDTO.seatName != ''">
+            and instr(seat_name, #{queryDTO.seatName}) > 0
+        </if>
+        <if test="queryDTO.seatState != null">
+            and seat_state = #{queryDTO.seatState}
+        </if>
+    </select>
+    -->
+    <select id="queryByHelper" resultType="com.selfstudy.modules.bas.entity.BasAppointmentEntity">
+        SELECT
+            a.*,
+            f.floor AS floor,
+            r.room_name AS roomName,
+            s.seat_name AS seatNumber
+            FROM
+                bas_appointment a
+            LEFT JOIN bas_seat s ON a.seat_id = s.seat_id
+            LEFT JOIN bas_study_room r ON s.room_id = r.room_id
+            LEFT JOIN bas_floor f ON r.floor_id = f.id
+        where a.delete_flag = 0
+        <if test="queryDTO.seatPhone != null and queryDTO.seatPhone != ''">
+            AND a.seat_phone = #{queryDTO.seatPhone}
+        </if>
+        <if test="queryDTO.seatName != null and queryDTO.seatName != ''">
+            AND INSTR(a.seat_name, #{queryDTO.seatName}) > 0
+        </if>
+        <if test="queryDTO.seatState != null">
+            AND a.seat_state = #{queryDTO.seatState}
+        </if>
+    </select>
+    <select id="getSeatDay" resultType="java.lang.String">
+        select seat_day
+        from bas_appointment where id = #{id}
+    </select>
+    <select id="getAppointmentById" resultType="com.selfstudy.modules.bas.entity.BasAppointmentEntity">
+        SELECT
+        ba.id,
+        ba.seat_id,
+        ba.user_id,
+        ba.seat_phone,
+        ba.seat_name,
+        ba.seat_class,
+        ba.seat_time,
+        ba.seat_state,
+        ba.seat_day,
+        ba.create_user_id,
+        ba.create_time,
+        ba.update_time,
+        ba.delete_flag,
+        ba.delete_user_id,
+        ba.delete_time,
+        bf.floor AS floor,       <!-- 楼层字段，来自bas_floor -->
+        bsr.room_name AS roomName, <!-- 房间名称，来自bas_study_room -->
+        bs.seat_name AS seatNumber <!-- 座位号，来自bas_seat -->
+        FROM bas_appointment ba
+        LEFT JOIN bas_seat bs ON ba.seat_id = bs.seat_id
+        LEFT JOIN bas_study_room bsr ON bs.room_id = bsr.room_id
+        LEFT JOIN bas_floor bf ON bsr.floor_id = bf.id
+        WHERE ba.id = #{id} AND ba.delete_flag = 0
+    </select>
+    <select id="getExpiredAppointments" resultType="com.selfstudy.modules.bas.entity.BasAppointmentEntity">
+        SELECT *
+        FROM bas_appointment
+        WHERE seat_state = 0
+          AND STR_TO_DATE(
+                      CONCAT(
+                              SUBSTRING_INDEX(seat_day, ' ', 1),
+                              ' ',
+                              SUBSTRING_INDEX(SUBSTRING_INDEX(seat_day, ' ', -1), '-', -1)
+                      ),
+                      '%Y-%m-%d %H:%i'
+              ) &lt; NOW()
+    </select>
+
+</mapper>

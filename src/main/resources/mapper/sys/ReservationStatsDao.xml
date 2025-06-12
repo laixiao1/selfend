@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.selfstudy.modules.bas.dao.ReservationStatsDao">
+
+    <resultMap id="ReservationStatsMap" type="com.selfstudy.modules.applet.vo.ReservationStatsVO">
+        <result column="year" property="year"/>
+        <result column="month" property="month"/>
+        <result column="day" property="day"/>
+        <result column="hour" property="hour"/>
+        <result column="minute" property="minute"/>
+        <result column="seat_id" property="seatId"/>
+        <result column="reservation_count" property="reservationCount"/>
+        <result column="usage_count" property="usageCount"/>
+    </resultMap>
+
+    <!-- 统计：年/月预约次数 -->
+    <select id="getReservationStats" resultMap="ReservationStatsMap">
+        SELECT
+        YEAR(seat_day) AS year
+        <if test="month != null and month &gt; 0">, MONTH(seat_day) AS month</if>
+        , COUNT(*) AS reservation_count
+        FROM bas_appointment
+        WHERE YEAR(seat_day) = #{year}
+        <if test="month != null and month &gt; 0">
+            AND MONTH(seat_day) = #{month}
+        </if>
+        GROUP BY YEAR(seat_day)
+        <if test="month != null and month &gt; 0">
+            , MONTH(seat_day)
+        </if>
+    </select>
+
+    <!-- 统计：按小时统计 -->
+    <select id="getReservationTimeStats" resultMap="ReservationStatsMap">
+        SELECT
+        YEAR(seat_time) AS year
+        <if test="month != null and month &gt; 0">, MONTH(seat_time) AS month</if>
+        , HOUR(seat_time) AS hour
+        , COUNT(*) AS reservation_count
+        FROM bas_appointment
+        WHERE YEAR(seat_time) = #{year}
+        <if test="month != null and month &gt; 0">
+            AND MONTH(seat_time) = #{month}
+        </if>
+        GROUP BY YEAR(seat_time)
+        <if test="month != null and month &gt; 0">
+            , MONTH(seat_time)
+        </if>
+        , HOUR(seat_time)
+    </select>
+
+    <!-- 统计：当日座位使用次数 -->
+    <select id="selectTodaySeatUsage" resultMap="ReservationStatsMap">
+        SELECT seat_id,
+               COUNT(*) AS usage_count
+        FROM bas_appointment
+        WHERE DATE(seat_time) = CURDATE()
+        GROUP BY seat_id
+    </select>
+</mapper>
